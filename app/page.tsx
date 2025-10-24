@@ -1,65 +1,193 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useHeartRate } from '@/hooks/useHeartRate';
+import { calculateHRVMetrics, filterOutliers, keepRecentIntervals } from '@/utils/hrvCalculations';
+import MetricCard from '@/components/MetricCard';
+import ConnectionButton from '@/components/ConnectionButton';
+import HeartRateGraph from '@/components/HeartRateGraph';
+import StatusIndicator from '@/components/StatusIndicator';
+import ErrorAlert from '@/components/ErrorAlert';
+import HelpSection from '@/components/HelpSection';
 
 export default function Home() {
+  const { isConnected, isConnecting, heartRateData, error, connect, disconnect, deviceName } =
+    useHeartRate();
+
+  const [rrIntervalHistory, setRRIntervalHistory] = useState<
+    Array<{ value: number; timestamp: number }>
+  >([]);
+  const [currentHR, setCurrentHR] = useState<number>(0);
+  const [sdnn, setSDNN] = useState<number>(0);
+  const [rmssd, setRMSSD] = useState<number>(0);
+
+  // Process incoming heart rate data
+  useEffect(() => {
+    if (!heartRateData) return;
+
+    // Update current heart rate
+    setCurrentHR(heartRateData.heartRate);
+
+    // Add new RR intervals to history
+    if (heartRateData.rrIntervals.length > 0) {
+      setRRIntervalHistory((prev) => {
+        const newIntervals = heartRateData.rrIntervals.map((value) => ({
+          value,
+          timestamp: heartRateData.timestamp,
+        }));
+
+        const updated = [...prev, ...newIntervals];
+        // Keep only last 60 seconds of data
+        return keepRecentIntervals(updated, 60000);
+      });
+    }
+  }, [heartRateData]);
+
+  // Calculate HRV metrics whenever interval history changes
+  useEffect(() => {
+    if (rrIntervalHistory.length < 2) {
+      setSDNN(0);
+      setRMSSD(0);
+      return;
+    }
+
+    // Extract values and filter outliers
+    const values = rrIntervalHistory.map((item) => item.value);
+    const filteredValues = filterOutliers(values);
+
+    if (filteredValues.length >= 2) {
+      const metrics = calculateHRVMetrics(filteredValues);
+      setSDNN(metrics.sdnn);
+      setRMSSD(metrics.rmssd);
+    }
+  }, [rrIntervalHistory]);
+
+  const handleConnect = useCallback(async () => {
+    // Clear previous data when connecting
+    setRRIntervalHistory([]);
+    setCurrentHR(0);
+    setSDNN(0);
+    setRMSSD(0);
+    await connect();
+  }, [connect]);
+
+  const handleDisconnect = useCallback(() => {
+    disconnect();
+    // Optionally clear data on disconnect
+    // setRRIntervalHistory([]);
+    // setCurrentHR(0);
+    // setSDNN(0);
+    // setRMSSD(0);
+  }, [disconnect]);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
+      <div className="container mx-auto px-4 py-8 md:py-12 max-w-7xl">
+        {/* Header */}
+        <div className="mb-8 md:mb-12">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-6">
+            <div>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-2">
+                HRV Monitor
+              </h1>
+              <p className="text-gray-400 text-sm md:text-base">
+                Real-time Heart Rate Variability Analysis
+              </p>
+            </div>
+            <StatusIndicator isConnected={isConnected} deviceName={deviceName} />
+          </div>
+
+          {/* Connection Button */}
+          <div className="flex justify-center md:justify-start">
+            <ConnectionButton
+              isConnected={isConnected}
+              isConnecting={isConnecting}
+              onConnect={handleConnect}
+              onDisconnect={handleDisconnect}
+              deviceName={deviceName}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
         </div>
-      </main>
-    </div>
+
+        {/* Error Alert */}
+        {error && <div className="mb-6"><ErrorAlert error={error} /></div>}
+
+        {/* Main Metrics Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <MetricCard
+            label="HRV (RMSSD)"
+            value={rmssd}
+            unit="ms"
+            size="large"
+            color="green"
+            description="Short-term heart rate variability"
+          />
+          <MetricCard
+            label="Heart Rate"
+            value={currentHR}
+            unit="BPM"
+            size="large"
+            color="red"
+            description="Current heart rate"
+          />
+          <MetricCard
+            label="SDNN"
+            value={sdnn}
+            unit="ms"
+            size="medium"
+            color="purple"
+            description="Overall HRV measure"
+          />
+        </div>
+
+        {/* Graph Section */}
+        <div className="mb-8">
+          <HeartRateGraph rrIntervals={rrIntervalHistory} maxPoints={60} />
+        </div>
+
+        {/* Additional Stats */}
+        {isConnected && rrIntervalHistory.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div className="bg-slate-800/50 border border-slate-700/30 rounded-xl p-4 backdrop-blur-sm">
+              <p className="text-gray-400 text-xs uppercase mb-1">Data Points</p>
+              <p className="text-2xl font-bold text-blue-400">{rrIntervalHistory.length}</p>
+            </div>
+            <div className="bg-slate-800/50 border border-slate-700/30 rounded-xl p-4 backdrop-blur-sm">
+              <p className="text-gray-400 text-xs uppercase mb-1">Recording Time</p>
+              <p className="text-2xl font-bold text-blue-400">
+                {Math.floor((Date.now() - (rrIntervalHistory[0]?.timestamp || Date.now())) / 1000)}s
+              </p>
+            </div>
+            <div className="bg-slate-800/50 border border-slate-700/30 rounded-xl p-4 backdrop-blur-sm">
+              <p className="text-gray-400 text-xs uppercase mb-1">Min RR</p>
+              <p className="text-2xl font-bold text-green-400">
+                {Math.min(...rrIntervalHistory.map((r) => r.value)).toFixed(0)}ms
+              </p>
+            </div>
+            <div className="bg-slate-800/50 border border-slate-700/30 rounded-xl p-4 backdrop-blur-sm">
+              <p className="text-gray-400 text-xs uppercase mb-1">Max RR</p>
+              <p className="text-2xl font-bold text-purple-400">
+                {Math.max(...rrIntervalHistory.map((r) => r.value)).toFixed(0)}ms
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Help Section */}
+        <HelpSection />
+
+        {/* Footer */}
+        <footer className="mt-12 pt-8 border-t border-slate-800">
+          <div className="text-center text-gray-500 text-sm">
+            <p className="mb-2">
+              Built with Next.js, React, and Web Bluetooth API
+            </p>
+            <p className="text-xs">
+              This app requires a Bluetooth heart rate monitor compatible with the Heart Rate Service (0x180D)
+            </p>
+          </div>
+        </footer>
+      </div>
+    </main>
   );
 }
