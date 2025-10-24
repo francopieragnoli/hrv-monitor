@@ -1,3 +1,5 @@
+import TrendIndicator from './TrendIndicator';
+
 interface MetricCardProps {
   label: string;
   value: number | string;
@@ -5,6 +7,7 @@ interface MetricCardProps {
   description?: string;
   size?: 'small' | 'medium' | 'large';
   color?: string;
+  trend?: 'declining' | 'stable' | 'improving';
 }
 
 export default function MetricCard({
@@ -14,6 +17,7 @@ export default function MetricCard({
   description,
   size = 'medium',
   color = 'blue',
+  trend,
 }: MetricCardProps) {
   const getSizeClasses = () => {
     switch (size) {
@@ -64,9 +68,12 @@ export default function MetricCard({
                   backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-2xl`}
     >
       <div className="flex flex-col items-center justify-center space-y-2">
-        <h3 className="text-gray-400 text-sm md:text-base lg:text-lg font-semibold uppercase tracking-wider">
-          {label}
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-gray-400 text-sm md:text-base lg:text-lg font-semibold uppercase tracking-wider">
+            {label}
+          </h3>
+          {trend && <TrendIndicator trend={trend} size="small" />}
+        </div>
         <div className="flex items-baseline justify-center gap-2">
           <span className={`${getSizeClasses()} font-bold ${getTextColor()} tabular-nums transition-all duration-500`}>
             {displayValue}
