@@ -18,6 +18,19 @@ A modern, responsive web application for monitoring Heart Rate Variability (HRV)
 - **Heart Rate (BPM)**: Real-time heart rate monitoring
 - **Outlier Filtering**: Automatic detection and removal of measurement artifacts
 
+### 🎯 Combined Interpretation (NEW!)
+- **Intelligent Pattern Recognition**: Analyzes RMSSD, SDNN, and HR together for comprehensive health insights
+- **Six Health Statuses**: Optimal, Good, Fair, Stressed, Fatigued, Overtraining
+- **Trend Detection**: Tracks metric history to identify improving, declining, or stable patterns
+- **Actionable Recommendations**: Personalized advice for training, recovery, and stress management
+- **Early Warning System**: Detects overtraining before physical symptoms appear
+- **Severity Indicators**: Visual 1-5 scale showing concern level
+
+**Key Pattern Detection:**
+- Low RMSSD + High HR + Low SDNN = **High Stress** - Rest needed
+- High RMSSD + Normal/Low HR + High SDNN = **Optimal Recovery** - Ready for training
+- Progressive RMSSD decline = **Overtraining Warning** - Early intervention required
+
 ### Visual Interface
 - **Large, Readable Fonts**: Metrics displayed with 48px-96px font sizes for easy viewing
 - **High Contrast Design**: Dark theme optimized for visibility
@@ -121,16 +134,19 @@ hrv-monitor/
 │   ├── page.tsx            # Main HRV monitoring page
 │   └── globals.css         # Global styles
 ├── components/
-│   ├── ConnectionButton.tsx    # Bluetooth connection control
-│   ├── ErrorAlert.tsx          # Error display component
-│   ├── HeartRateGraph.tsx      # Real-time graph visualization
-│   ├── HelpSection.tsx         # Help and instructions
-│   ├── MetricCard.tsx          # Individual metric display
-│   └── StatusIndicator.tsx     # Connection status display
+│   ├── ConnectionButton.tsx       # Bluetooth connection control
+│   ├── ErrorAlert.tsx             # Error display component
+│   ├── HeartRateGraph.tsx         # Real-time graph visualization
+│   ├── HelpSection.tsx            # Help and instructions
+│   ├── InterpretationPanel.tsx    # Combined HRV interpretation (NEW!)
+│   ├── MetricCard.tsx             # Individual metric display
+│   ├── StatusIndicator.tsx        # Connection status display
+│   └── TrendIndicator.tsx         # Metric trend arrows (NEW!)
 ├── hooks/
-│   └── useHeartRate.ts         # Custom hook for Bluetooth connection
+│   └── useHeartRate.ts            # Custom hook for Bluetooth connection
 ├── utils/
-│   └── hrvCalculations.ts      # HRV metric calculations
+│   ├── hrvCalculations.ts         # HRV metric calculations
+│   └── hrvInterpretation.ts       # Combined interpretation logic (NEW!)
 └── README.md
 ```
 
